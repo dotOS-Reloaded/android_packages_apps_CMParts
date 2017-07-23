@@ -97,9 +97,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <meta-data
-                android:name="com.android.settings.category"
-                android:value="com.android.settings.category.personal" />
-            <meta-data
                 android:name="com.android.settings.icon"
                 android:resource="@drawable/ic_settings_privacy" />
             <meta-data
