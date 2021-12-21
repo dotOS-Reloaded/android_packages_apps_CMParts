@@ -253,13 +253,6 @@ public class ButtonSettings extends SettingsPreferenceFragment implements
         mNavigationHomeDoubleTapAction = initList(KEY_NAVIGATION_HOME_DOUBLE_TAP,
                 homeDoubleTapAction);
 
-        // Hide navigation bar home settings if we have a hardware home key
-        // so that action config options aren't duplicated.
-        if (hasHomeKey) {
-                mNavigationPreferencesCat.removePreference(mNavigationHomeLongPressAction);
-                mNavigationPreferencesCat.removePreference(mNavigationHomeDoubleTapAction);
-        }
-
         // Navigation bar recents long press activity needs custom setup
         mNavigationRecentsLongPressAction =
                 initRecentsLongPressAction(KEY_NAVIGATION_RECENTS_LONG_PRESS);
@@ -313,6 +306,10 @@ public class ButtonSettings extends SettingsPreferenceFragment implements
 
             mHomeLongPressAction = initList(KEY_HOME_LONG_PRESS, homeLongPressAction);
             mHomeDoubleTapAction = initList(KEY_HOME_DOUBLE_TAP, homeDoubleTapAction);
+            if (mDisableNavigationKeys.isChecked()) {
+                mHomeLongPressAction.setEnabled(false);
+                mHomeDoubleTapAction.setEnabled(false);
+            }
 
             hasAnyBindableKey = true;
         } else {
@@ -687,8 +684,25 @@ public class ButtonSettings extends SettingsPreferenceFragment implements
         }
 
         /* Toggle hardkey control availability depending on navbar state */
+        if (mNavigationPreferencesCat != null) {
+            if (navbarEnabled) {
+                mNavigationPreferencesCat.addPreference(mNavigationHomeLongPressAction);
+                mNavigationPreferencesCat.addPreference(mNavigationHomeDoubleTapAction);
+            } else {
+                mNavigationPreferencesCat.removePreference(mNavigationHomeLongPressAction);
+                mNavigationPreferencesCat.removePreference(mNavigationHomeDoubleTapAction);
+            }
+        }
         if (homeCategory != null) {
-            homeCategory.setEnabled(!navbarEnabled);
+            if (mHomeAnswerCall != null) {
+                mHomeAnswerCall.setEnabled(!navbarEnabled);
+            }
+            if (mHomeLongPressAction != null) {
+                mHomeLongPressAction.setEnabled(!navbarEnabled);
+            }
+            if (mHomeDoubleTapAction != null) {
+                mHomeDoubleTapAction.setEnabled(!navbarEnabled);
+            }
         }
         if (backCategory != null) {
             backCategory.setEnabled(!navbarEnabled);
@@ -718,18 +732,20 @@ public class ButtonSettings extends SettingsPreferenceFragment implements
     @Override
     public boolean onPreferenceTreeClick(Preference preference) {
         if (preference == mSwapVolumeButtons) {
-            int value = mSwapVolumeButtons.isChecked()
-                    ? (ScreenType.isTablet(getActivity()) ? 2 : 1) : 0;
-            if (value == 2) {
-                Display defaultDisplay = getActivity().getWindowManager().getDefaultDisplay();
+            int value;
 
-                DisplayInfo displayInfo = new DisplayInfo();
-                defaultDisplay.getDisplayInfo(displayInfo);
-
-                // Not all tablets are landscape
-                if (displayInfo.getNaturalWidth() < displayInfo.getNaturalHeight()) {
-                    value = 1;
-                }
+            if (mSwapVolumeButtons.isChecked()) {
+                /* The native inputflinger service uses the same logic of:
+                 *   1 - the volume rocker is on one the sides, relative to the natural
+                 *       orientation of the display (true for all phones and most tablets)
+                 *   2 - the volume rocker is on the top or bottom, relative to the
+                 *       natural orientation of the display (true for some tablets)
+                 */
+                value = getResources().getInteger(
+                        R.integer.config_volumeRockerVsDisplayOrientation);
+            } else {
+                /* Disable the re-orient functionality */
+                value = 0;
             }
             CMSettings.System.putInt(getActivity().getContentResolver(),
                     CMSettings.System.SWAP_VOLUME_KEYS_ON_ROTATION, value);
